@@ -1,2 +1,2 @@
-# winvolume
-Easy way to edit window master sound level
+# Winvolume
+Welcome to the easy way to change the volume level in windows.
