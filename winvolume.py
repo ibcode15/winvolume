@@ -1,6 +1,7 @@
 from ctypes import cast, POINTER
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume,ISimpleAudioVolume
+import fire
 winvolume = cast(AudioUtilities.GetSpeakers().Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None), POINTER(IAudioEndpointVolume))
 
 
@@ -29,7 +30,7 @@ def ScalarToNormal(value:int):
 def Mute():
     winvolume.SetMute(1, None)
 def Unmute():
-   winvolume.SetMute(0, None)
+    winvolume.SetMute(0, None)
 def SetVolume(vol:int):
     winvolume.SetMasterVolumeLevelScalar(NormalToScalar(vol), None)
 def GetCurrentVolumeLevel():
@@ -40,7 +41,8 @@ def VolumeUp(vol=2):
 
 def VolumeDown(vol=2):
     SetVolume(int(GetCurrentVolumeLevel() - int(vol)))
-    
+
+
 def ListSessions():
     Sessions = AudioUtilities.GetAllSessions()
     SessionList = []
@@ -52,7 +54,20 @@ def ListSessions():
     
     SessionList.remove(None)
     return SessionList
-            
+
+def ListSessionsCLI():
+    Sessions = AudioUtilities.GetAllSessions()
+    SessionList = []
+    for session in Sessions:
+        if session == None:
+            continue
+        else:
+            SessionList.append(session.Process)
+    
+    SessionList.remove(None)
+    for i in SessionList:
+        print(str(i))
+                      
             
 def GetSessionByName(ProcessName):
     Sessions = AudioUtilities.GetAllSessions()
@@ -75,7 +90,14 @@ def GetSessionByPID(PID):
         except:
             pass
     
-    
+def TypeSwitch(input_):
+    if str(type(input_)) == "<class 'str'>":
+        input_ = GetSessionByName(input_)
+    elif str(type(self.Session)) == "<class 'int'>":
+        input_ = GetSessionByPID(int(input_))
+    else:
+        pass
+    return input_
 class VolumeSession:
     def __init__(self, Session):
         self.Session = Session
@@ -93,8 +115,37 @@ class VolumeSession:
     def Unmute(self):
         self.Session.SetMute(0, None)
     def GetCurrentVolumeLevel(self):
-        return ScalarToNormal(self.Session.GetMasterVolume())
+        return str(ScalarToNormal(self.Session.GetMasterVolume())) + "%"
     def GetCurrentActualVolumeLevel(self):
-        GetVolume1 = ScalarToNormal(self.Session.GetMasterVolume())
-        GetVolume2 = round(winvolume.GetMasterVolumeLevelScalar(), 2)
-        return int(GetVolume1*GetVolume2)
+        return int(ScalarToNormal(self.Session.GetMasterVolume())*round(winvolume.GetMasterVolumeLevelScalar(), 2))
+
+def SetSessionVolume(session, vol:int):
+    session = TypeSwitch(session)
+    session.SetMasterVolume(NormalToScalar(vol), None)
+def MuteSession(session):
+    session = TypeSwitch(session)
+    session.SetMute(1, None)
+def UnMuteSession(session):
+    session = TypeSwitch(session)
+    session.SetMute(0, None)
+def GetSessionCurrentVolumeLevel(session):
+    session = TypeSwitch(session)
+    return str(ScalarToNormal(session.GetMasterVolume())) + "%" 
+def GetRealSessionCurrentVolumeLevel(session):
+    session = TypeSwitch(session)
+    return int(ScalarToNormal(session.GetMasterVolume()) * round(winvolume.GetMasterVolumeLevelScalar(), 2))
+if __name__ == '__main__':
+  fire.Fire({
+      'M': Mute,
+      'UM': Unmute,
+      'SV': SetVolume,
+      'CV': GetCurrentVolumeLevel,
+      'up': VolumeUp,
+      'down': VolumeDown,
+      'LS': ListSessionsCLI,
+      'SSV': SetSessionVolume,
+      'MS': MuteSession,
+      'UMS': UnMuteSession,
+      'CSV': GetSessionCurrentVolumeLevel,
+      'RCSV': GetRealSessionCurrentVolumeLevel
+  })
