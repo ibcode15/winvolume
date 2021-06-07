@@ -1,7 +1,10 @@
 from ctypes import cast, POINTER
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume,ISimpleAudioVolume
+from threading import Thread
 import fire
+from time import sleep
+import sys
 winvolume = cast(AudioUtilities.GetSpeakers().Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None), POINTER(IAudioEndpointVolume))
 
 
@@ -26,14 +29,15 @@ def ScalarToNormal(value:int):
     if value[0] == "0":
         return int(value[1])
     return int(value)
-    
+def Muted():
+    return winvolume.GetMute() == 1
 def Mute():
-    winvolume.SetMute(1, None)
+    return winvolume.SetMute(1, None)
 def Unmute():
-    winvolume.SetMute(0, None)
+    return winvolume.SetMute(0, None)
 def SetVolume(vol:int):
     winvolume.SetMasterVolumeLevelScalar(NormalToScalar(vol), None)
-def GetCurrentVolumeLevel():
+def GetVolumeLevel():
     current = winvolume.GetMasterVolumeLevelScalar()
     return ScalarToNormal(current)
 def VolumeUp(vol=2):
@@ -43,109 +47,226 @@ def VolumeDown(vol=2):
     SetVolume(int(GetCurrentVolumeLevel() - int(vol)))
 
 
-def ListSessions():
-    Sessions = AudioUtilities.GetAllSessions()
-    SessionList = []
-    for session in Sessions:
-        if session == None:
+def ListProcesss():
+    Processs = AudioUtilities.GetAllSessions()
+    ProcessList = []
+    for Process in Processs:
+        if Process == None:
             continue
         else:
-            SessionList.append(session.Process)
+            ProcessList.append(Process.Process)
     
-    SessionList.remove(None)
-    return SessionList
+    ProcessList.remove(None)
+    return ProcessList
 
-def ListSessionsCLI():
-    Sessions = AudioUtilities.GetAllSessions()
-    SessionList = []
-    for session in Sessions:
-        if session == None:
+def ListProcesssCLI():
+    Processs = AudioUtilities.GetAllSessions()
+    ProcessList = []
+    for Process in Processs:
+        if Process == None:
             continue
         else:
-            SessionList.append(session.Process)
+            ProcessList.append(Process.Process)
     
-    SessionList.remove(None)
-    for i in SessionList:
+    ProcessList.remove(None)
+    for i in ProcessList:
         print(str(i))
                       
             
-def GetSessionByName(ProcessName):
-    Sessions = AudioUtilities.GetAllSessions()
-    for session in Sessions:
-        volume = session._ctl.QueryInterface(ISimpleAudioVolume)
+def GetProcessByName(ProcessName):
+    Processs = AudioUtilities.GetAllSessions()
+    for Process in Processs:
+        volume = Process._ctl.QueryInterface(ISimpleAudioVolume)
         try:
-            if session.Process.name() == ProcessName:
+            if Process.Process.name() == ProcessName:
                 
                 return volume
         except:
             pass
     
-def GetSessionByPID(PID):
-    Sessions = AudioUtilities.GetAllSessions()
-    for session in Sessions:
-        volume = session._ctl.QueryInterface(ISimpleAudioVolume)
+def GetProcessByPID(PID):
+    Processs = AudioUtilities.GetAllSessions()
+    for Process in Processs:
+        volume = Process._ctl.QueryInterface(ISimpleAudioVolume)
         try:
-            if session.Process.pid == PID:
+            if Process.Process.pid == PID:
                 return volume
         except:
             pass
     
 def TypeSwitch(input_):
     if str(type(input_)) == "<class 'str'>":
-        input_ = GetSessionByName(input_)
-    elif str(type(self.Session)) == "<class 'int'>":
-        input_ = GetSessionByPID(int(input_))
+        input_ = GetProcessByName(input_)
+    elif str(type(input_)) == "<class 'int'>":
+        input_ = GetProcessByPID(int(input_))
     else:
-        pass
+        return None 
     return input_
-class VolumeSession:
-    def __init__(self, Session):
-        self.Session = Session
-        if str(type(self.Session)) == "<class 'str'>":
-            self.Session = GetSessionByName(self.Session)
-        elif str(type(self.Session)) == "<class 'int'>":
-            self.Session = GetSessionByPID(int(self.Session))
-        else:
-            pass
-            
-    def SetVolume(self,vol):
-        self.Session.SetMasterVolume(NormalToScalar(vol), None)
-    def Mute(self):
-        self.Session.SetMute(1, None)
-    def Unmute(self):
-        self.Session.SetMute(0, None)
-    def GetCurrentVolumeLevel(self):
-        return str(ScalarToNormal(self.Session.GetMasterVolume())) + "%"
-    def GetCurrentActualVolumeLevel(self):
-        return int(ScalarToNormal(self.Session.GetMasterVolume())*round(winvolume.GetMasterVolumeLevelScalar(), 2))
 
-def SetSessionVolume(session, vol:int):
-    session = TypeSwitch(session)
-    session.SetMasterVolume(NormalToScalar(vol), None)
-def MuteSession(session):
-    session = TypeSwitch(session)
-    session.SetMute(1, None)
-def UnMuteSession(session):
-    session = TypeSwitch(session)
-    session.SetMute(0, None)
-def GetSessionCurrentVolumeLevel(session):
-    session = TypeSwitch(session)
-    return str(ScalarToNormal(session.GetMasterVolume())) + "%" 
-def GetRealSessionCurrentVolumeLevel(session):
-    session = TypeSwitch(session)
-    return int(ScalarToNormal(session.GetMasterVolume()) * round(winvolume.GetMasterVolumeLevelScalar(), 2))
+class VolumeProcess:
+    def __init__(self, Process):
+        self.Process = TypeSwitch(Process)
+    def SetVolume(self,vol):
+        self.Process.SetMasterVolume(NormalToScalar(vol), None)
+    def Mute(self):
+        self.Process.SetMute(1, None)
+    def Unmute(self):
+        self.Process.SetMute(0, None)
+    def Muted(self):
+        return self.Process.GetMute() == 1
+    def GetVolumeLevel(self):
+        return str(ScalarToNormal(self.Process.GetMasterVolume())) + "%"
+    def GetActualVolumeLevel(self):
+        return int(ScalarToNormal(self.Process.GetMasterVolume())*round(winvolume.GetMasterVolumeLevelScalar(), 2))
+
+def SetProcessVolume(Process, vol:int):
+    Process = TypeSwitch(Process)
+    Process.SetMasterVolume(NormalToScalar(vol), None)
+def MuteProcess(Process):
+    Process = TypeSwitch(Process)
+    Process.SetMute(1, None)
+def UnMuteProcess(Process):
+    Process = TypeSwitch(Process)
+    Process.SetMute(0, None)
+def GetProcessVolumeLevel(Process):
+    Process = TypeSwitch(Process)
+    return str(ScalarToNormal(Process.GetMasterVolume())) + "%" 
+def GetRealProcessVolumeLevel(Process):
+    Process = TypeSwitch(Process)
+    return int(ScalarToNormal(Process.GetMasterVolume()) * round(winvolume.GetMasterVolumeLevelScalar(), 2))
+
+#                 Listener
+# modes
+#
+# V - if the volume level has any change, run script
+#
+# CV (certain volume - not current volume) - if volume is not a certain volume, run script.
+# These certain value can be added with the following line, CValue=[values]
+# Here is an example, Listener("CV", script="print('hello')", CValue=[100, 50, 0])
+# if the volume is not 100,50 or 0 then it will print hello
+#
+# UM - if unmuted, run script.
+#
+# M - if muted, run script.
+
+
+class Listener:
+    def __init__(self, mode,script=None,CValue=[]):
+        self.mode = mode
+        self.script = script
+        self.CValue = CValue
+        self.StopThread = False
+    def func(self):
+        
+        if self.mode == "V":
+            
+            self.VolumeLevel = GetVolumeLevel()
+            while True:
+                if self.StopThread == True:
+                    break
+                if self.VolumeLevel == GetVolumeLevel():
+                    continue
+                self.VolumeLevel = GetVolumeLevel()
+                exec(self.script)
+        elif self.mode == "CV":
+            
+            while True:
+                if self.StopThread == True:
+                    break
+                self.VolumeLevel = GetVolumeLevel()
+                if self.VolumeLevel in self.CValue:
+                    continue
+                exec(self.script)
+        elif self.mode == "UM":
+            while True:
+                if self.StopThread == True:
+                    break
+                if Muted():
+                    continue
+                exec(self.script)
+        elif self.mode == "M":
+            
+            while True:
+                if self.StopThread == True:
+                    break
+                if Muted():
+                    exec(self.script)
+        else:
+            print("help me")
+                
+    def start(self):
+        if "idlelib" in sys.modules == True:
+            print()
+        self.MyThread = Thread(target = self.func)
+        self.MyThread.start()
+    def stop(self):
+        self.StopThread = True
+
+class ProcessListener:
+    def __init__(self,Process,mode,script=None,CValue=[]):
+        self.Process = TypeSwitch(Process)
+        self.mode = mode
+        self.script = script
+        self.CValue = CValue
+        self.StopThread = False
+    def func(self):
+        
+        if self.mode == "V":
+            
+            self.VolumeLevel = ScalarToNormal(Process.GetMasterVolume())
+            while True:
+                if self.StopThread == True:
+                    break
+                if self.VolumeLevel == ScalarToNormal(Process.GetMasterVolume()):
+                    continue
+                self.VolumeLevel = ScalarToNormal(Process.GetMasterVolume())
+                exec(self.script)
+        elif self.mode == "CV":
+            
+            while True:
+                if self.StopThread == True:
+                    break
+                self.VolumeLevel = ScalarToNormal(Process.GetMasterVolume())
+                if self.VolumeLevel in self.CValue:
+                    continue
+                exec(self.script)
+        elif self.mode == "UM":
+            while True:
+                if self.StopThread == True:
+                    break
+                if self.Process.GetMute() == 1:
+                    continue
+                exec(self.script)
+        elif self.mode == "M":
+            
+            while True:
+                if self.StopThread == True:
+                    break
+                if self.Process.GetMute() == 1:
+                    exec(self.script)
+        else:
+            print("help me")
+                
+    def start(self):
+        if "idlelib" in sys.modules == True:
+            print()
+        self.MyThread = Thread(target = self.func)
+        self.MyThread.start()
+    def stop(self):
+        self.StopThread = True    
+
 if __name__ == '__main__':
   fire.Fire({
       'M': Mute,
       'UM': Unmute,
       'SV': SetVolume,
-      'CV': GetCurrentVolumeLevel,
+      'CV': GetVolumeLevel,
       'up': VolumeUp,
       'down': VolumeDown,
-      'LS': ListSessionsCLI,
-      'SSV': SetSessionVolume,
-      'MS': MuteSession,
-      'UMS': UnMuteSession,
-      'CSV': GetSessionCurrentVolumeLevel,
-      'RCSV': GetRealSessionCurrentVolumeLevel
+      'LS': ListProcesssCLI,
+      'SSV': SetProcessVolume,
+      'MS': MuteProcess,
+      'UMS': UnMuteProcess,
+      'CSV': GetProcessVolumeLevel,
+      'RCSV': GetRealProcessVolumeLevel
   })
