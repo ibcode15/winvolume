@@ -42,10 +42,10 @@ def GetVolumeLevel():
     current = winvolume.GetMasterVolumeLevelScalar()
     return ScalarToNormal(current)
 def VolumeUp(vol=2):
-    SetVolume(int(GetCurrentVolumeLevel() + int(vol)))
+    SetVolume(int(GetVolumeLevel() + int(vol)))
 
 def VolumeDown(vol=2):
-    SetVolume(int(GetCurrentVolumeLevel() - int(vol)))
+    SetVolume(int(GetVolumeLevel() - int(vol)))
 
 
 def ListProcesss():
@@ -214,20 +214,20 @@ class ProcessListener:
         
         if self.mode == "V":
             
-            self.VolumeLevel = ScalarToNormal(Process.GetMasterVolume())
+            self.VolumeLevel = ScalarToNormal(self.Process.GetMasterVolume())
             while True:
                 if self.StopThread == True:
                     break
-                if self.VolumeLevel == ScalarToNormal(Process.GetMasterVolume()):
+                if self.VolumeLevel == ScalarToNormal(self.Process.GetMasterVolume()):
                     continue
-                self.VolumeLevel = ScalarToNormal(Process.GetMasterVolume())
+                self.VolumeLevel = ScalarToNormal(self.Process.GetMasterVolume())
                 exec(self.script)
         elif self.mode == "CV":
             
             while True:
                 if self.StopThread == True:
                     break
-                self.VolumeLevel = ScalarToNormal(Process.GetMasterVolume())
+                self.VolumeLevel = ScalarToNormal(self.Process.GetMasterVolume())
                 if self.VolumeLevel in self.CValue:
                     continue
                 exec(self.script)
