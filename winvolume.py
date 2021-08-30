@@ -80,10 +80,10 @@ def GetProcessByName(ProcessName):
         volume = Process._ctl.QueryInterface(ISimpleAudioVolume)
         try:
             if Process.Process.name() == ProcessName:
-                
                 return volume
         except:
             pass
+    return "cannot find Process"
     
 def GetProcessByPID(PID):
     Processs = AudioUtilities.GetAllSessions()
