@@ -94,7 +94,7 @@ def GetProcessByPID(PID):
                 return volume
         except:
             pass
-    
+    return "cannot find Process"    
 def TypeSwitch(input_):
     if str(type(input_)) == "<class 'str'>":
         input_ = GetProcessByName(input_)
